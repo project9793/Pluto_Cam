@@ -1,0 +1,808 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#06080F">
+<title>Pluto Live - Cam &amp; TV</title>
+<style>
+  :root{
+    --bg:#06080F; --panel:#0D1222; --panel2:#111831; --line:#1E2740;
+    --txt:#E8ECF8; --muted:#9AA6C4; --cyan:#22D3EE; --cyan-d:#0891B2;
+    --violet:#8B5CF6; --green:#22C55E; --red:#F43F5E;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{
+    margin:0; min-height:100vh; color:var(--txt);
+    background:radial-gradient(1200px 820px at 50% -12%, #12203f 0%, var(--bg) 58%);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    -webkit-font-smoothing:antialiased; line-height:1.45;
+  }
+  .hide{display:none !important}
+  button,select,input{font:inherit;color:inherit}
+  button{cursor:pointer}
+  h1,h2,h3,p{margin:0}
+
+  /* ---------- splash overlay ---------- */
+  #splash{
+    position:fixed; inset:0; z-index:60; display:flex; flex-direction:column;
+    align-items:center; justify-content:center; gap:20px;
+    background:radial-gradient(900px 600px at 50% 38%, #16264a 0%, #06080F 62%);
+    animation:splashOut .7s ease 1.5s forwards;
+  }
+  @keyframes splashOut{to{opacity:0; visibility:hidden; pointer-events:none}}
+  #splash .mark{width:132px;height:132px;filter:drop-shadow(0 8px 40px rgba(34,211,238,.35))}
+  #splash .word{font-size:44px;font-weight:800;letter-spacing:.12em}
+  #splash .sub{font-size:15px;letter-spacing:.42em;color:var(--cyan);text-transform:uppercase}
+  #splash .dots{display:flex;gap:9px;margin-top:14px}
+  #splash .dots i{width:9px;height:9px;border-radius:50%;background:var(--cyan);opacity:.3;animation:pulse 1.2s infinite}
+  #splash .dots i:nth-child(2){animation-delay:.15s}
+  #splash .dots i:nth-child(3){animation-delay:.3s}
+  @keyframes pulse{0%,100%{opacity:.25;transform:scale(.85)}50%{opacity:1;transform:scale(1)}}
+
+  /* ---------- layout ---------- */
+  .wrap{max-width:1180px;margin:0 auto;padding:20px 18px 48px}
+  header.top{display:flex;align-items:center;gap:16px;flex-wrap:wrap;padding:8px 0 18px}
+  .brand{display:flex;align-items:center;gap:12px}
+  .brand svg{width:42px;height:42px}
+  .brand b{font-size:22px;font-weight:800;letter-spacing:.06em}
+  .brand span{color:var(--cyan)}
+  .roles{margin-left:auto;display:flex;gap:8px;background:var(--panel);border:1px solid var(--line);padding:6px;border-radius:14px}
+  .roles button{background:transparent;border:0;color:var(--muted);padding:10px 16px;border-radius:10px;font-weight:700;font-size:14px;letter-spacing:.02em}
+  .roles button.on{background:linear-gradient(180deg,var(--cyan),var(--cyan-d));color:#04121a}
+
+  .banner{margin:0 0 18px;padding:12px 16px;border-radius:12px;font-size:13.5px;
+    background:rgba(34,211,238,.08);border:1px solid rgba(34,211,238,.35);color:#B7F3FB}
+
+  .grid{display:grid;gap:18px;grid-template-columns:1.15fr .85fr}
+  @media (max-width:880px){ .grid{grid-template-columns:1fr} }
+
+  .card{background:linear-gradient(180deg,var(--panel),#0A0E1F);border:1px solid var(--line);border-radius:18px;padding:18px}
+  .card h3{font-size:13px;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);font-weight:700;margin-bottom:14px}
+
+  /* preview */
+  .stage{position:relative;background:#000;border-radius:14px;overflow:hidden;aspect-ratio:16/9;border:1px solid var(--line)}
+  .stage video{width:100%;height:100%;object-fit:contain;background:#000;display:block}
+  .badge{position:absolute;top:12px;left:12px;display:flex;align-items:center;gap:7px;
+    background:rgba(6,8,15,.72);padding:6px 11px;border-radius:20px;font-size:12px;font-weight:700;letter-spacing:.06em}
+  .badge .dot{width:9px;height:9px;border-radius:50%;background:var(--muted)}
+  .badge.live .dot{background:var(--green);box-shadow:0 0 0 0 rgba(34,197,94,.7);animation:ring 1.4s infinite}
+  @keyframes ring{70%{box-shadow:0 0 0 9px rgba(34,197,94,0)}100%{box-shadow:0 0 0 0 rgba(34,197,94,0)}}
+
+  /* buttons */
+  .btn{display:inline-flex;align-items:center;justify-content:center;gap:9px;border:1px solid var(--line);
+    background:var(--panel2);color:var(--txt);padding:12px 16px;border-radius:12px;font-weight:700;font-size:14px;transition:.15s}
+  .btn:hover{border-color:var(--cyan)}
+  .btn.primary{background:linear-gradient(180deg,var(--cyan),var(--cyan-d));color:#04121a;border-color:transparent}
+  .btn.danger{background:linear-gradient(180deg,#fb7185,#e11d48);color:#fff;border-color:transparent}
+  .btn.ghost{background:transparent}
+  .btn:disabled{opacity:.45;cursor:not-allowed;filter:grayscale(.3)}
+  .btn:focus-visible,.roles button:focus-visible,input:focus-visible,select:focus-visible{
+    outline:3px solid var(--cyan);outline-offset:3px}
+  .row{display:flex;flex-wrap:wrap;gap:10px}
+  .row .btn{flex:1 1 auto}
+  .stack{display:flex;flex-direction:column;gap:12px}
+
+  .code{display:flex;align-items:center;gap:12px;background:#05070F;border:1px dashed var(--line);border-radius:12px;padding:12px 14px}
+  .code b{font-size:30px;letter-spacing:.28em;font-weight:800;color:var(--cyan);font-variant-numeric:tabular-nums}
+  .code small{color:var(--muted);font-size:12px;display:block}
+
+  .stat{display:flex;justify-content:space-between;font-size:13.5px;padding:7px 0;border-bottom:1px solid var(--line)}
+  .stat:last-child{border-bottom:0}
+  .stat span:last-child{color:var(--cyan);font-weight:700}
+  .muted{color:var(--muted);font-size:13px}
+
+  #qrBox{display:flex;justify-content:center;padding:8px 0}
+  #qrBox canvas,#qrBox img{background:#fff;padding:10px;border-radius:12px;width:150px;height:150px}
+  #qrBox .nocode{color:var(--muted);font-size:12.5px;text-align:center}
+
+  /* viewer */
+  .viewerStage{position:relative;background:#000;border-radius:16px;overflow:hidden;aspect-ratio:16/9;border:1px solid var(--line)}
+  .viewerStage video{width:100%;height:100%;object-fit:contain;background:#000;display:block}
+  .viewerStage.fill video{object-fit:cover}
+  .overlay{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;
+    background:rgba(6,8,15,.55);backdrop-filter:blur(2px)}
+  .overlay .spin{width:34px;height:34px;border-radius:50%;border:3px solid rgba(34,211,238,.25);border-top-color:var(--cyan);animation:spin 1s linear infinite}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .viewerTools{position:absolute;top:12px;right:12px;display:flex;gap:8px}
+  .viewerTools .btn{padding:9px 12px;font-size:13px;background:rgba(6,8,15,.72)}
+  .statusbar{display:flex;justify-content:space-between;align-items:center;margin-top:12px;font-size:13.5px;color:var(--muted)}
+
+  .field{display:flex;gap:10px}
+  .field input{flex:1;background:#05070F;border:1px solid var(--line);border-radius:12px;padding:14px 16px;
+    letter-spacing:.24em;font-weight:700;font-size:18px;text-transform:uppercase}
+  select{background:#05070F;border:1px solid var(--line);border-radius:12px;padding:11px 12px;width:100%}
+
+  details{margin-top:26px;border:1px solid var(--line);border-radius:14px;padding:14px 16px;background:var(--panel)}
+  details summary{cursor:pointer;font-weight:700;color:var(--cyan)}
+  details ol{margin:12px 0 0;padding-left:20px;color:var(--muted);font-size:13.5px;line-height:1.9}
+  details code{background:#05070F;padding:2px 6px;border-radius:6px;color:#B7F3FB}
+
+  /* toast */
+  #toast{position:fixed;left:50%;bottom:26px;transform:translateX(-50%);z-index:80;display:flex;flex-direction:column;gap:8px;align-items:center;pointer-events:none}
+  #toast div{background:#0D1222;border:1px solid var(--line);border-left:4px solid var(--cyan);color:var(--txt);
+    padding:11px 16px;border-radius:10px;font-size:13.5px;max-width:88vw;box-shadow:0 12px 40px rgba(0,0,0,.5)}
+  #toast div.err{border-left-color:var(--red)}
+
+  footer{margin-top:34px;text-align:center;color:var(--muted);font-size:12.5px}
+  @media (min-width:1100px){ .wrap{max-width:1280px} .brand b{font-size:24px} .card{padding:22px} }
+</style>
+</head>
+<body>
+
+<!-- ===== splash overlay (CSS-animated, failsafe) ===== -->
+<div id="splash" aria-hidden="true">
+  <svg class="mark" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <linearGradient id="pg" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0" stop-color="#A78BFA"/><stop offset="1" stop-color="#D946EF"/>
+      </linearGradient>
+    </defs>
+    <g transform="translate(256,256) rotate(-22)">
+      <ellipse rx="198" ry="58" fill="none" stroke="#22D3EE" stroke-width="9"/>
+    </g>
+    <circle cx="256" cy="256" r="150" fill="url(#pg)"/>
+    <ellipse cx="208" cy="198" rx="66" ry="42" fill="#fff" opacity=".3" transform="rotate(-32 208 198)"/>
+    <polygon points="256,161 338,208 338,303 256,351 174,303 174,208" fill="#080B18"/>
+    <circle cx="298" cy="214" r="13" fill="#fff" opacity=".9"/>
+  </svg>
+  <div class="word">PLUTO</div>
+  <div class="sub">Cam &amp; TV</div>
+  <div class="dots"><i></i><i></i><i></i></div>
+</div>
+
+<div class="wrap">
+  <header class="top">
+    <div class="brand">
+      <svg viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <defs><linearGradient id="pg2" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stop-color="#A78BFA"/><stop offset="1" stop-color="#D946EF"/></linearGradient></defs>
+        <circle cx="256" cy="256" r="150" fill="url(#pg2)"/>
+        <polygon points="256,161 338,208 338,303 256,351 174,303 174,208" fill="#080B18"/>
+        <ellipse cx="256" cy="256" rx="198" ry="58" fill="none" stroke="#22D3EE" stroke-width="14" transform="rotate(-22 256 256)"/>
+      </svg>
+      <b>PLUTO<span>LIVE</span></b>
+    </div>
+    <div class="roles" role="tablist" aria-label="Choose role">
+      <button id="roleBroadcast" class="on" role="tab" aria-selected="true">Pluto Cam &middot; Broadcast</button>
+      <button id="roleView" role="tab" aria-selected="false">Pluto TV &middot; Watch</button>
+    </div>
+  </header>
+
+  <div id="modeBanner" class="banner hide"></div>
+
+  <!-- ===== BROADCAST ===== -->
+  <section id="broadcastPanel">
+    <div class="grid">
+      <div class="card">
+        <h3>Camera Preview</h3>
+        <div class="stage">
+          <video id="camPreview" autoplay muted playsinline></video>
+          <div id="liveBadge" class="badge"><span class="dot"></span><span id="liveText">Idle</span></div>
+        </div>
+        <div class="stack" style="margin-top:16px">
+          <div class="stat"><span>Connection</span><span id="connState">Idle</span></div>
+          <div class="stat"><span>Viewer</span><span id="viewerStatus">No viewer</span></div>
+          <div class="stat"><span>Upload</span><span id="netStatus">--</span></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>Session</h3>
+        <div class="code">
+          <div style="flex:1">
+            <small>TV connection code</small>
+            <b id="sessionCode">------</b>
+          </div>
+          <button id="copyBtn" class="btn ghost" type="button">Copy</button>
+        </div>
+        <div id="qrBox"><div class="nocode">QR appears when you go live</div></div>
+
+        <div class="stack" style="margin-top:6px">
+          <div class="row">
+            <button id="startBtn" class="btn primary" type="button">Start Live</button>
+            <button id="stopBtn" class="btn danger" type="button" disabled>Stop</button>
+          </div>
+          <div class="row">
+            <button id="micBtn" class="btn" type="button">Mic: On</button>
+            <button id="camBtn" class="btn" type="button">Camera: On</button>
+            <button id="switchCamBtn" class="btn" type="button">Flip</button>
+          </div>
+          <label class="muted">Resolution
+            <select id="resSelect" style="margin-top:6px">
+              <option value="480">480p</option>
+              <option value="720" selected>720p</option>
+              <option value="1080">1080p</option>
+            </select>
+          </label>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== VIEWER ===== -->
+  <section id="viewPanel" class="hide">
+    <div class="grid">
+      <div class="card">
+        <h3>Live View</h3>
+        <div id="tvStage" class="viewerStage">
+          <video id="tvVideo" autoplay playsinline></video>
+          <div id="tvOverlay" class="overlay">
+            <div class="spin"></div>
+            <div class="muted" id="overlayText">Not connected</div>
+          </div>
+          <div class="viewerTools">
+            <button id="fillBtn" class="btn" type="button">Fill</button>
+            <button id="fsBtn" class="btn" type="button">Full screen</button>
+          </div>
+        </div>
+        <div class="statusbar">
+          <span id="tvStatus">Idle</span>
+          <span id="tvHint" class="muted">Remote: use D-pad, Enter to select</span>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>Connect to a session</h3>
+        <div class="stack">
+          <div class="field">
+            <input id="sessionInput" type="text" maxlength="8" placeholder="ENTER CODE" autocomplete="off" spellcheck="false">
+            <button id="connectBtn" class="btn primary" type="button">Connect</button>
+          </div>
+          <button id="disconnectBtn" class="btn danger" type="button" disabled>Disconnect</button>
+          <p class="muted">Type the code shown on the Pluto Cam phone, then press Connect. Playback starts automatically once the stream is live.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <details>
+    <summary>Setup: go live over the internet (Firebase + GitHub Pages)</summary>
+    <ol>
+      <li>Create a Firebase project and enable <b>Realtime Database</b> (and Anonymous Auth if you want rules-based access).</li>
+      <li>Copy your web config into the <code>FIREBASE_CONFIG</code> object at the top of this file's script.</li>
+      <li>Enable <b>Authentication &rarr; Sign-in method &rarr; Anonymous</b>, then set rules so only authenticated users may read/write <code>liveSessions/&lt;id&gt;</code>.</li>
+      <li>Add optional TURN credentials to <code>ICE_SERVERS</code> for networks where STUN fails.</li>
+      <li>Host this single file on GitHub Pages over HTTPS (camera + WebRTC need a secure context).</li>
+      <li>Open the page on the TV, switch to <b>Watch</b>, enter the code. On the phone, switch to <b>Broadcast</b> and Start Live.</li>
+    </ol>
+    <p class="muted" style="margin-top:10px">Until Firebase is configured, the app runs in <b>Local test mode</b>: two tabs of this same page in one browser connect to each other - perfect for verifying the flow with zero setup.</p>
+  </details>
+
+  <footer>Pluto Live &middot; Pluto Cam &amp; Pluto TV &middot; WebRTC + Firebase signaling</footer>
+</div>
+
+<div id="toast" aria-live="polite"></div>
+
+<script>
+'use strict';
+(function(){
+
+  /* =========================================================
+     1. CONFIG
+     ========================================================= */
+  var FIREBASE_CONFIG = {
+    apiKey: "AIzaSyAO2nEheBV6dMTVnO70mfbRZcrWHvw91Po",
+    authDomain: "pluto-cam.firebaseapp.com",
+    /* IMPORTANT: this URL must match YOUR Realtime Database instance exactly.
+       Open Firebase Console -> Build -> Realtime Database and copy the URL shown
+       (it may look like https://pluto-cam-default-rtdb.firebaseio.com
+        or https://pluto-cam-default-rtdb.<region>.firebasedatabase.app). */
+    databaseURL: "https://pluto-cam-default-rtdb.firebaseio.com",
+    projectId: "pluto-cam",
+    storageBucket: "pluto-cam.firebasestorage.app",
+    messagingSenderId: "370448711099",
+    appId: "1:370448711099:web:7f6f417e38fa2e0322589e"
+  };
+
+  var ICE_SERVERS = [
+    { urls: ["stun:stun.l.google.com:19302", "stun:stun1.l.google.com:19302"] }
+    /* Add a TURN server for strict networks, e.g.:
+    , { urls: "turn:YOUR_TURN_HOST:3478", username: "USER", credential: "PASS" } */
+  ];
+
+  function firebaseConfigured(){
+    var k = FIREBASE_CONFIG.apiKey || "";
+    var u = FIREBASE_CONFIG.databaseURL || "";
+    return k.indexOf("YOUR_") !== 0 && k.length > 10 && u.indexOf("YOUR_") === -1 && u.length > 10;
+  }
+
+  /* =========================================================
+     2. TINY HELPERS
+     ========================================================= */
+  var $ = function(id){ return document.getElementById(id); };
+  function setText(id, t){ var el = $(id); if(el) el.textContent = t; }
+  function toast(msg, kind){
+    var box = $("toast"); if(!box) return;
+    var d = document.createElement("div");
+    d.textContent = String(msg);
+    if(kind === "err") d.className = "err";
+    box.appendChild(d);
+    setTimeout(function(){ d.style.transition = "opacity .4s"; d.style.opacity = "0";
+      setTimeout(function(){ if(d.parentNode) d.parentNode.removeChild(d); }, 400); }, 3600);
+  }
+  window.addEventListener("error", function(e){ toast("Error: " + (e.message || "unknown"), "err"); });
+  window.addEventListener("unhandledrejection", function(e){
+    var r = e.reason; toast("Error: " + ((r && r.message) || r || "unknown"), "err");
+  });
+
+  function randomCode(n){
+    var a = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789", s = "", i;
+    var buf = new Uint32Array(n);
+    if(window.crypto && crypto.getRandomValues){ crypto.getRandomValues(buf); }
+    else { for(i=0;i<n;i++) buf[i] = Math.floor(Math.random()*4294967295); }
+    for(i=0;i<n;i++) s += a[buf[i] % a.length];
+    return s;
+  }
+  function secureContextOk(){
+    var ok = window.isSecureContext || location.hostname === "localhost" || location.hostname === "127.0.0.1";
+    if(!ok) toast("Needs a secure context (https:// or localhost). Camera & WebRTC are blocked here.", "err");
+    return ok;
+  }
+  function candJson(c){
+    if(!c) return null;
+    if(typeof c.toJSON === "function") return c.toJSON();
+    return { candidate: c.candidate, sdpMid: c.sdpMid, sdpMLineIndex: c.sdpMLineIndex, usernameFragment: c.usernameFragment };
+  }
+
+  /* =========================================================
+     3. SIGNALING  (Local BroadcastChannel  |  Firebase RTDB)
+     ========================================================= */
+  function LocalSignaling(id, role){ this.id = id; this.role = role; this.h = {}; this.ch = null; }
+  LocalSignaling.prototype.connect = function(){
+    var self = this;
+    this.ch = new BroadcastChannel("pluto-live-" + this.id);
+    this.ch.onmessage = function(e){
+      var m = e.data;
+      if(!m || !m.type || m.from === self.role) return;
+      self.emit(m.type, m);
+    };
+    return Promise.resolve();
+  };
+  LocalSignaling.prototype.send = function(msg){
+    if(!this.ch) return;
+    try{ this.ch.postMessage(Object.assign({ from: this.role }, msg)); }catch(err){ console.warn(err); }
+  };
+  LocalSignaling.prototype.on = function(t, cb){ (this.h[t] = this.h[t] || []).push(cb); };
+  LocalSignaling.prototype.emit = function(t, d){
+    (this.h[t] || []).forEach(function(cb){ try{ cb(d); }catch(e){ console.error(e); } });
+  };
+  LocalSignaling.prototype.close = function(){
+    if(this.ch){ try{ this.ch.close(); }catch(e){} this.ch = null; }
+    this.h = {};
+  };
+
+  var fbLoading = null;
+  function loadScript(src){
+    return new Promise(function(res, rej){
+      var s = document.createElement("script");
+      s.src = src; s.async = true;
+      s.onload = function(){ res(); };
+      s.onerror = function(){ rej(new Error("Failed to load " + src)); };
+      document.head.appendChild(s);
+    });
+  }
+  function ensureFirebase(){
+    if(window.firebase && window.firebase.database) return Promise.resolve();
+    if(fbLoading) return fbLoading;
+    fbLoading = loadScript("https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js")
+      .then(function(){ return loadScript("https://www.gstatic.com/firebasejs/10.12.5/firebase-database-compat.js"); })
+      .then(function(){ return loadScript("https://www.gstatic.com/firebasejs/10.12.5/firebase-auth-compat.js").catch(function(){ return null; }); })
+      .then(function(){
+        if(!firebase.apps || !firebase.apps.length){ firebase.initializeApp(FIREBASE_CONFIG); }
+        if(firebase.auth){
+          return firebase.auth().signInAnonymously().catch(function(err){
+            console.warn("Anonymous sign-in skipped:", err && err.code,
+              "- enable Anonymous in Firebase Console > Authentication to use auth-based rules.");
+            return null;
+          });
+        }
+        return null;
+      })
+      .then(function(){ return firebase.database(); });
+    return fbLoading;
+  }
+
+  function FirebaseSignaling(id, role){ this.id = id; this.role = role; this.h = {}; this.ref = null; }
+  FirebaseSignaling.prototype.connect = function(){
+    var self = this;
+    return ensureFirebase().then(function(db){
+      self.ref = db.ref("liveSessions/" + self.id);
+      var now = Date.now();
+      if(self.role === "host"){
+        return self.ref.child("hostCandidates").remove().catch(function(){})
+          .then(function(){ return self.ref.update({ status: "live", createdAt: now, viewerConnected: false }); })
+          .then(function(){
+            self.ref.child("answer").on("value", function(s){ var v = s.val(); if(v) self.emit("answer", v); });
+            self.ref.child("viewerCandidates").on("child_added", function(s){ self.emit("candidate", { candidate: s.val(), from: "viewer" }); });
+            self.ref.child("viewerConnected").on("value", function(s){ self.emit(s.val() ? "viewer-joined" : "viewer-left"); });
+          });
+      }
+      return self.ref.child("viewerCandidates").remove().catch(function(){})
+        .then(function(){ return self.ref.update({ viewerConnected: true, viewerAt: now }); })
+        .then(function(){
+          self.ref.child("offer").on("value", function(s){ var v = s.val(); if(v) self.emit("offer", v); });
+          self.ref.child("hostCandidates").on("child_added", function(s){ self.emit("candidate", { candidate: s.val(), from: "host" }); });
+          self.ref.child("status").on("value", function(s){ if(s.val() === "ended") self.emit("host-stopped", {}); });
+        });
+    });
+  };
+  FirebaseSignaling.prototype.send = function(msg){
+    if(!this.ref) return;
+    var t = msg.type, self = this;
+    if(t === "offer"){ this.ref.child("offer").set(msg.sdp).catch(function(){}); }
+    else if(t === "answer"){ this.ref.child("answer").set(msg.sdp).catch(function(){}); }
+    else if(t === "candidate"){
+      var from = msg.from || this.role;
+      this.ref.child(from === "host" ? "hostCandidates" : "viewerCandidates").push(msg.candidate).catch(function(){});
+    }
+    else if(t === "host-stopped"){ this.ref.child("status").set("ended").catch(function(){}); }
+    else if(t === "viewer-joined"){ this.ref.child("viewerConnected").set(true).catch(function(){}); }
+    void self;
+  };
+  FirebaseSignaling.prototype.on = function(t, cb){ (this.h[t] = this.h[t] || []).push(cb); };
+  FirebaseSignaling.prototype.emit = function(t, d){
+    (this.h[t] || []).forEach(function(cb){ try{ cb(d); }catch(e){ console.error(e); } });
+  };
+  FirebaseSignaling.prototype.close = function(){
+    var ref = this.ref, role = this.role;
+    if(ref){
+      if(role === "viewer"){ ref.child("viewerConnected").set(false).catch(function(){}); }
+      else { ref.child("status").set("ended").catch(function(){}); }
+      setTimeout(function(){ try{ ref.off(); ref.remove().catch(function(){}); }catch(e){} }, 500);
+    }
+    this.h = {};
+  };
+
+  function createSignaling(id, role){
+    return firebaseConfigured() ? new FirebaseSignaling(id, role) : new LocalSignaling(id, role);
+  }
+
+  /* =========================================================
+     4. QR (optional, graceful)
+     ========================================================= */
+  var qrLoaded = null;
+  function ensureQR(){
+    if(window.QRCode) return Promise.resolve(true);
+    if(qrLoaded) return qrLoaded;
+    qrLoaded = loadScript("https://cdn.jsdelivr.net/gh/davidshimjs/qrcodejs/qrcode.min.js")
+      .then(function(){ return !!window.QRCode; }).catch(function(){ return false; });
+    return qrLoaded;
+  }
+  function showQR(code){
+    var box = $("qrBox"); if(!box) return;
+    var url = location.origin + location.pathname + "#code=" + code;
+    ensureQR().then(function(ok){
+      if(ok && window.QRCode){
+        box.innerHTML = "";
+        try{ new QRCode(box, { text: url, width: 150, height: 150, correctLevel: QRCode.CorrectLevel.M }); }
+        catch(e){ box.innerHTML = '<div class="nocode">QR unavailable - share code ' + code + '</div>'; }
+      } else {
+        box.innerHTML = '<div class="nocode">QR needs internet.<br>Share code <b>' + code + '</b></div>';
+      }
+    });
+  }
+  function clearQR(){
+    var box = $("qrBox"); if(box) box.innerHTML = '<div class="nocode">QR appears when you go live</div>';
+  }
+
+  /* =========================================================
+     5. BROADCASTER
+     ========================================================= */
+  var b = { stream: null, pc: null, sig: null, sessionId: null, active: false, facing: "environment", micOn: true, camOn: true, statsTimer: null, lastOffer: null };
+
+  function constraintsFor(facing, res){
+    var h = parseInt(res, 10) || 720;
+    return {
+      video: { facingMode: facing, width: { ideal: Math.round(h * 16 / 9) }, height: { ideal: h } },
+      audio: true
+    };
+  }
+
+  b.start = function(){
+    if(b.active) return;
+    if(!secureContextOk()) return;
+    var res = $("resSelect") ? $("resSelect").value : "720";
+
+    navigator.mediaDevices.getUserMedia(constraintsFor(b.facing, res)).then(function(stream){
+      b.stream = stream;
+      var pv = $("camPreview"); if(pv) pv.srcObject = stream;
+      b.micOn = true; b.camOn = true;
+
+      b.sessionId = randomCode(6);
+      setText("sessionCode", b.sessionId);
+      showQR(b.sessionId);
+
+      b.sig = createSignaling(b.sessionId, "host");
+      return b.sig.connect();
+    }).then(function(){
+      b.pc = new RTCPeerConnection({ iceServers: ICE_SERVERS });
+
+      b.stream.getTracks().forEach(function(t){ b.pc.addTrack(t, b.stream); });
+
+      b.pc.onicecandidate = function(e){
+        if(e.candidate && b.sig) b.sig.send({ type: "candidate", candidate: candJson(e.candidate) });
+      };
+      b.pc.onconnectionstatechange = function(){
+        if(!b.pc) return;
+        var s = b.pc.connectionState;
+        setText("connState", s === "connected" ? "Connected" : s.charAt(0).toUpperCase() + s.slice(1));
+        if(s === "connected") setText("liveText", "LIVE");
+      };
+
+      b.sig.on("answer", function(m){
+        if(b.pc && b.pc.signalingState !== "stable"){
+          b.pc.setRemoteDescription(m).catch(function(err){ console.warn("answer", err); });
+        }
+      });
+      b.sig.on("candidate", function(m){
+        if(b.pc && m.from === "viewer"){
+          b.pc.addIceCandidate(m.candidate).catch(function(err){ console.warn("ice", err); });
+        }
+      });
+      b.sig.on("viewer-joined", function(){
+        setText("viewerStatus", "Connected");
+        if(b.pc && b.lastOffer){ b.sig.send({ type: "offer", sdp: b.lastOffer }); }
+      });
+      b.sig.on("viewer-left", function(){ setText("viewerStatus", "No viewer"); });
+
+      return b.pc.createOffer();
+    }).then(function(offer){
+      b.lastOffer = { type: offer.type, sdp: offer.sdp };
+      return b.pc.setLocalDescription(offer).then(function(){
+        b.sig.send({ type: "offer", sdp: b.lastOffer });
+      });
+    }).then(function(){
+      b.active = true;
+      b.updateUI();
+      setText("connState", "Waiting for viewer");
+      setText("viewerStatus", "No viewer");
+      startStats();
+      toast("Live. Share code " + b.sessionId);
+    }).catch(function(err){
+      toast("Could not start: " + (err && err.message ? err.message : err), "err");
+      b.stop();
+    });
+  };
+
+  b.stop = function(){
+    try{ if(b.sig) b.sig.send({ type: "host-stopped" }); }catch(e){}
+    stopStats();
+    if(b.pc){ try{ b.pc.close(); }catch(e){} b.pc = null; }
+    if(b.stream){ b.stream.getTracks().forEach(function(t){ t.stop(); }); b.stream = null; }
+    if(b.sig){ b.sig.close(); b.sig = null; }
+    var pv = $("camPreview"); if(pv) pv.srcObject = null;
+    b.active = false; b.sessionId = null; b.lastOffer = null;
+    b.updateUI();
+    setText("connState", "Idle"); setText("viewerStatus", "No viewer");
+    setText("netStatus", "--"); setText("liveText", "Idle");
+    setText("sessionCode", "------");
+    clearQR();
+  };
+
+  b.updateUI = function(){
+    var s = $("startBtn"), t = $("stopBtn");
+    if(s) s.disabled = b.active;
+    if(t) t.disabled = !b.active;
+    var badge = $("liveBadge");
+    if(badge) badge.className = b.active ? "badge live" : "badge";
+  };
+
+  b.toggleMic = function(){
+    if(!b.stream) return;
+    b.micOn = !b.micOn;
+    b.stream.getAudioTracks().forEach(function(t){ t.enabled = b.micOn; });
+    setText("micBtn", "Mic: " + (b.micOn ? "On" : "Off"));
+  };
+  b.toggleCam = function(){
+    if(!b.stream) return;
+    b.camOn = !b.camOn;
+    b.stream.getVideoTracks().forEach(function(t){ t.enabled = b.camOn; });
+    setText("camBtn", "Camera: " + (b.camOn ? "On" : "Off"));
+  };
+  b.switchCamera = function(){
+    if(!b.stream) return;
+    b.facing = (b.facing === "environment") ? "user" : "environment";
+    var res = $("resSelect") ? $("resSelect").value : "720";
+    navigator.mediaDevices.getUserMedia({ video: constraintsFor(b.facing, res).video, audio: false })
+      .then(function(ns){
+        var nt = ns.getVideoTracks()[0];
+        var old = b.stream.getVideoTracks()[0];
+        if(old){ b.stream.removeTrack(old); old.stop(); }
+        b.stream.addTrack(nt);
+        var pv = $("camPreview"); if(pv) pv.srcObject = b.stream;
+        if(b.pc){
+          var sender = b.pc.getSenders().filter(function(s){ return s.track && s.track.kind === "video"; })[0];
+          if(sender) sender.replaceTrack(nt).catch(function(){});
+        }
+      }).catch(function(err){ toast("Flip failed: " + err.message, "err"); });
+  };
+
+  var lastBytes = 0, lastTs = 0;
+  function startStats(){
+    stopStats();
+    lastBytes = 0; lastTs = 0;
+    b.statsTimer = setInterval(function(){
+      if(!b.pc) return;
+      b.pc.getStats().then(function(report){
+        report.forEach(function(r){
+          if(r.type === "outbound-rtp" && r.kind === "video" && typeof r.bytesSent === "number"){
+            var now = r.timestamp;
+            if(lastTs && now > lastTs){
+              var kbps = Math.max(0, Math.round((r.bytesSent - lastBytes) * 8 / (now - lastTs)));
+              setText("netStatus", kbps + " kbps");
+            }
+            lastBytes = r.bytesSent; lastTs = now;
+          }
+        });
+      }).catch(function(){});
+    }, 2000);
+  }
+  function stopStats(){ if(b.statsTimer){ clearInterval(b.statsTimer); b.statsTimer = null; } }
+
+  /* =========================================================
+     6. VIEWER
+     ========================================================= */
+  var v = { pc: null, sig: null, sessionId: null };
+
+  v.connect = function(){
+    if(!secureContextOk()) return;
+    var input = $("sessionInput");
+    var id = (input && input.value ? input.value : "").trim().toUpperCase();
+    if(id.length < 4){ toast("Enter the code shown on the phone", "err"); return; }
+    v.sessionId = id;
+
+    v.sig = createSignaling(id, "viewer");
+    v.sig.connect().then(function(){
+      v.sig.send({ type: "viewer-joined" });
+      v.sig.on("offer", function(m){ v.handleOffer(m); });
+      v.sig.on("candidate", function(m){
+        if(v.pc && m.from === "host"){ v.pc.addIceCandidate(m.candidate).catch(function(err){ console.warn("ice", err); }); }
+      });
+      v.sig.on("host-stopped", function(){ toast("Broadcaster ended the session", "err"); v.disconnect(); });
+      setText("tvStatus", "Connecting...");
+      showOverlay("Connecting to " + id + "...");
+      $("connectBtn").disabled = true;
+      $("disconnectBtn").disabled = false;
+    }).catch(function(err){
+      toast("Signaling failed: " + err.message, "err");
+      v.disconnect();
+    });
+  };
+
+  v.handleOffer = function(sdp){
+    if(v.pc && v.pc.remoteDescription){ return; }
+    if(v.pc){ try{ v.pc.close(); }catch(e){} }
+    v.pc = new RTCPeerConnection({ iceServers: ICE_SERVERS });
+    v.pc.ontrack = function(e){
+      var tv = $("tvVideo");
+      if(tv && e.streams && e.streams[0]){ tv.srcObject = e.streams[0]; tv.play().catch(function(){}); }
+    };
+    v.pc.onicecandidate = function(e){
+      if(e.candidate && v.sig) v.sig.send({ type: "candidate", candidate: candJson(e.candidate) });
+    };
+    v.pc.onconnectionstatechange = function(){
+      if(!v.pc) return;
+      var s = v.pc.connectionState;
+      setText("tvStatus", s === "connected" ? "Live" : s.charAt(0).toUpperCase() + s.slice(1));
+      if(s === "connected"){ hideOverlay(); }
+      else if(s === "failed" || s === "disconnected"){ showOverlay("Connection " + s + ". Press Connect to retry."); }
+    };
+    v.pc.setRemoteDescription(sdp).then(function(){
+      return v.pc.createAnswer();
+    }).then(function(answer){
+      return v.pc.setLocalDescription(answer).then(function(){
+        v.sig.send({ type: "answer", sdp: { type: answer.type, sdp: answer.sdp } });
+      });
+    }).catch(function(err){ toast("Handshake failed: " + err.message, "err"); });
+  };
+
+  v.disconnect = function(){
+    if(v.pc){ try{ v.pc.close(); }catch(e){} v.pc = null; }
+    if(v.sig){ v.sig.close(); v.sig = null; }
+    var tv = $("tvVideo"); if(tv) tv.srcObject = null;
+    v.sessionId = null;
+    setText("tvStatus", "Idle");
+    showOverlay("Not connected");
+    $("connectBtn").disabled = false;
+    $("disconnectBtn").disabled = true;
+  };
+
+  function showOverlay(t){
+    var o = $("tvOverlay"); if(o){ o.classList.remove("hide"); }
+    setText("overlayText", t || "");
+  }
+  function hideOverlay(){ var o = $("tvOverlay"); if(o) o.classList.add("hide"); }
+
+  /* =========================================================
+     7. UI WIRING
+     ========================================================= */
+  function setRole(role){
+    var isB = role === "broadcast";
+    $("broadcastPanel").classList.toggle("hide", !isB);
+    $("viewPanel").classList.toggle("hide", isB);
+    var rb = $("roleBroadcast"), rv = $("roleView");
+    rb.classList.toggle("on", isB); rv.classList.toggle("on", !isB);
+    rb.setAttribute("aria-selected", String(isB));
+    rv.setAttribute("aria-selected", String(!isB));
+    if(!isB && v.sessionId === null && $("sessionInput") && !$("sessionInput").value){
+      var m = location.hash.match(/code=([A-Za-z0-9]+)/);
+      if(m) $("sessionInput").value = m[1].toUpperCase();
+    }
+  }
+
+  function copyCode(){
+    var code = b.sessionId;
+    if(!code){ toast("Start live first", "err"); return; }
+    if(navigator.clipboard && navigator.clipboard.writeText){
+      navigator.clipboard.writeText(code).then(function(){ toast("Code copied"); })
+        .catch(function(){ toast("Code: " + code); });
+    } else { toast("Code: " + code); }
+  }
+
+  function wire(){
+    $("roleBroadcast").addEventListener("click", function(){ setRole("broadcast"); });
+    $("roleView").addEventListener("click", function(){ setRole("view"); });
+
+    $("startBtn").addEventListener("click", function(){ b.start(); });
+    $("stopBtn").addEventListener("click", function(){ b.stop(); });
+    $("micBtn").addEventListener("click", function(){ b.toggleMic(); });
+    $("camBtn").addEventListener("click", function(){ b.toggleCam(); });
+    $("switchCamBtn").addEventListener("click", function(){ b.switchCamera(); });
+    $("copyBtn").addEventListener("click", copyCode);
+
+    $("connectBtn").addEventListener("click", function(){ v.connect(); });
+    $("disconnectBtn").addEventListener("click", function(){ v.disconnect(); });
+    $("sessionInput").addEventListener("keydown", function(e){ if(e.key === "Enter") v.connect(); });
+    $("sessionInput").addEventListener("input", function(e){
+      e.target.value = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, "");
+    });
+
+    $("fsBtn").addEventListener("click", function(){
+      var stage = $("tvStage");
+      if(!document.fullscreenElement && stage && stage.requestFullscreen){
+        stage.requestFullscreen().catch(function(){ toast("Full screen blocked", "err"); });
+      } else if(document.exitFullscreen){ document.exitFullscreen().catch(function(){}); }
+    });
+    document.addEventListener("fullscreenchange", function(){
+      setText("fsBtn", document.fullscreenElement ? "Exit" : "Full screen");
+    });
+    $("fillBtn").addEventListener("click", function(){
+      var stage = $("tvStage");
+      stage.classList.toggle("fill");
+      setText("fillBtn", stage.classList.contains("fill") ? "Fit" : "Fill");
+    });
+  }
+
+  /* =========================================================
+     8. BOOT
+     ========================================================= */
+  function boot(){
+    if(!firebaseConfigured()){
+      var mb = $("modeBanner");
+      mb.textContent = "Local test mode - works between two tabs of this page in one browser. Add your Firebase config at the top of the script to stream over the internet.";
+      mb.classList.remove("hide");
+    }
+    var m = location.hash.match(/code=([A-Za-z0-9]+)/);
+    if(m){
+      var si = $("sessionInput");
+      if(si) si.value = m[1].toUpperCase();
+    }
+    wire();
+    setRole("broadcast");
+    var sp = $("splash");
+    setTimeout(function(){ if(sp && sp.parentNode) sp.parentNode.removeChild(sp); }, 2400);
+    window.addEventListener("beforeunload", function(){
+      try{ if(b.active) b.stop(); }catch(e){}
+      try{ if(v.pc) v.pc.close(); }catch(e){}
+    });
+  }
+
+  if(document.readyState === "loading"){ document.addEventListener("DOMContentLoaded", boot); }
+  else { boot(); }
+
+})();
+</script>
+</body>
+</html>
