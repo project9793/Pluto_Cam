@@ -45,7 +45,7 @@ fun HomeScreen(
         }
 
         Text("PLUTO", color = MaterialTheme.colorScheme.onBackground, fontSize = 30.sp, fontWeight = FontWeight.ExtraBold)
-        Text("LIVE", color = MaterialTheme.colorScheme.primary, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+        Text("LIVE CAM", color = MaterialTheme.colorScheme.primary, fontSize = 18.sp, fontWeight = FontWeight.Bold)
         Spacer(Modifier.height(24.dp))
 
         ModeCard(
