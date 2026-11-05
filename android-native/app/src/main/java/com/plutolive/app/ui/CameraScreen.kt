@@ -16,6 +16,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -170,15 +171,15 @@ fun CameraScreen(onBack: () -> Unit) {
     Column(
         Modifier
             .fillMaxSize()
-            .background(DeepBg)
+            .background(MaterialTheme.colorScheme.background)
             .verticalScroll(rememberScrollState())
             .padding(16.dp)
     ) {
         TextButton(onClick = { stopSession(); onBack() }) {
-            Text("< Back", color = Cyan)
+            Text("< Back", color = MaterialTheme.colorScheme.primary)
         }
-        Text("Camera Mode", color = Color.White, fontSize = 24.sp, fontWeight = FontWeight.Bold)
-        Text("Turn this device into a live camera", color = Muted, fontSize = 13.sp)
+        Text("Camera Mode", color = MaterialTheme.colorScheme.onBackground, fontSize = 24.sp, fontWeight = FontWeight.Bold)
+        Text("Turn this device into a live camera", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 13.sp)
 
         Spacer(Modifier.height(14.dp))
         AndroidView(
@@ -190,8 +191,8 @@ fun CameraScreen(onBack: () -> Unit) {
         )
 
         Spacer(Modifier.height(12.dp))
-        Text("Status: " + status, color = Cyan, fontSize = 14.sp)
-        Text("Room code: " + code, color = Color.White, fontSize = 26.sp, fontWeight = FontWeight.ExtraBold)
+        Text("Status: " + status, color = MaterialTheme.colorScheme.primary, fontSize = 14.sp)
+        Text("Room code: " + code, color = MaterialTheme.colorScheme.onBackground, fontSize = 26.sp, fontWeight = FontWeight.ExtraBold)
 
         Spacer(Modifier.height(14.dp))
         if (!running) {

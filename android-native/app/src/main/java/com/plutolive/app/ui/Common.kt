@@ -8,10 +8,10 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -27,10 +27,15 @@ fun Card(title: String, content: @Composable () -> Unit) {
         Modifier
             .fillMaxWidth()
             .padding(vertical = 6.dp)
-            .background(Panel, RoundedCornerShape(18.dp))
+            .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(18.dp))
             .padding(16.dp)
     ) {
-        Text(title.uppercase(), color = Muted, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+        Text(
+            title.uppercase(),
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            fontSize = 12.sp,
+            fontWeight = FontWeight.Bold
+        )
         Box(Modifier.padding(top = 10.dp)) { content() }
     }
 }
@@ -40,7 +45,10 @@ fun PrimaryButton(text: String, enabled: Boolean = true, onClick: () -> Unit) {
     Button(
         onClick = onClick,
         enabled = enabled,
-        colors = ButtonDefaults.buttonColors(containerColor = Cyan, contentColor = Color(0xFF04202A)),
+        colors = ButtonDefaults.buttonColors(
+            containerColor = MaterialTheme.colorScheme.primary,
+            contentColor = MaterialTheme.colorScheme.onPrimary
+        ),
         modifier = Modifier.fillMaxWidth()
     ) { Text(text, fontWeight = FontWeight.Bold) }
 }
@@ -50,7 +58,10 @@ fun DangerButton(text: String, enabled: Boolean = true, onClick: () -> Unit) {
     Button(
         onClick = onClick,
         enabled = enabled,
-        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFE11D48), contentColor = Color.White),
+        colors = ButtonDefaults.buttonColors(
+            containerColor = MaterialTheme.colorScheme.error,
+            contentColor = MaterialTheme.colorScheme.onError
+        ),
         modifier = Modifier.fillMaxWidth()
     ) { Text(text, fontWeight = FontWeight.Bold) }
 }

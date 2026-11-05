@@ -15,6 +15,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -31,9 +32,11 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
+import android.view.SurfaceView
 import androidx.media3.common.MediaItem
+import androidx.media3.common.PlaybackException
+import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
-import androidx.media3.ui.PlayerView
 import com.plutolive.app.Signaling
 import com.plutolive.app.WebRtcClient
 import org.json.JSONObject
@@ -63,10 +66,18 @@ fun ViewerScreen(onBack: () -> Unit) {
     var mode by remember { mutableStateOf("none") } // none | webrtc | hls
 
     val renderer = remember { SurfaceViewRenderer(ctx).apply { setEnableHardwareScaler(true) } }
+    val surface = remember { SurfaceView(ctx) }
 
     DisposableEffect(Unit) {
+        val listener = object : Player.Listener {
+            override fun onPlayerError(error: PlaybackException) {
+                main.post { status = "Link error: " + error.errorCodeName }
+            }
+        }
+        exo.addListener(listener)
         renderer.init(rtc.eglContext, null)
         onDispose {
+            try { exo.removeListener(listener) } catch (_: Exception) {}
             try { state.sig?.stop() } catch (_: Exception) {}
             try { rtc.dispose() } catch (_: Exception) {}
             exo.release()
@@ -158,16 +169,21 @@ fun ViewerScreen(onBack: () -> Unit) {
         try { state.sig?.stop() } catch (_: Exception) {}
         state.sig = null
         mode = "hls"
-        exo.setMediaItem(MediaItem.fromUri(url))
-        exo.prepare()
-        exo.playWhenReady = true
-        status = "Playing link"
+        try {
+            exo.setVideoSurfaceView(surface)
+            exo.setMediaItem(MediaItem.fromUri(url))
+            exo.prepare()
+            exo.playWhenReady = true
+            status = "Playing link"
+        } catch (e: Exception) {
+            status = "Cannot play: " + (e.message ?: "unknown error")
+        }
     }
 
     Column(
         Modifier
             .fillMaxSize()
-            .background(DeepBg)
+            .background(MaterialTheme.colorScheme.background)
             .verticalScroll(rememberScrollState())
             .padding(16.dp)
     ) {
@@ -175,15 +191,15 @@ fun ViewerScreen(onBack: () -> Unit) {
             try { state.sig?.stop() } catch (_: Exception) {}
             exo.stop()
             onBack()
-        }) { Text("< Back", color = Cyan) }
+        }) { Text("< Back", color = MaterialTheme.colorScheme.primary) }
 
-        Text("Viewer Mode", color = Color.White, fontSize = 24.sp, fontWeight = FontWeight.Bold)
-        Text("Watch another device's camera", color = Muted, fontSize = 13.sp)
+        Text("Viewer Mode", color = MaterialTheme.colorScheme.onBackground, fontSize = 24.sp, fontWeight = FontWeight.Bold)
+        Text("Watch another device's camera", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 13.sp)
 
         Spacer(Modifier.height(12.dp))
         if (mode == "hls") {
             AndroidView(
-                factory = { PlayerView(it).apply { player = exo } },
+                factory = { surface },
                 modifier = Modifier
                     .fillMaxWidth()
                     .aspectRatio(16f / 9f)
@@ -200,7 +216,7 @@ fun ViewerScreen(onBack: () -> Unit) {
         }
 
         Spacer(Modifier.height(10.dp))
-        Text("Status: " + status, color = Cyan, fontSize = 14.sp)
+        Text("Status: " + status, color = MaterialTheme.colorScheme.primary, fontSize = 14.sp)
 
         Spacer(Modifier.height(12.dp))
         OutlinedTextField(
