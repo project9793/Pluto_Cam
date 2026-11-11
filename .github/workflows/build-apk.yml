@@ -38,14 +38,21 @@ jobs:
           echo "sdk.dir=$ANDROID_HOME" > local.properties
           gradle :app:assembleDebug --no-daemon --stacktrace
 
+      - name: Rename APK
+        run: |
+          mkdir -p out
+          cp android-native/app/build/outputs/apk/debug/app-debug.apk \
+             "out/pluto-live-cam-build${{ github.run_number }}.apk"
+          ls -la out
+
       - uses: actions/upload-artifact@v4
         with:
           name: pluto-live-apk
-          path: android-native/app/build/outputs/apk/debug/*.apk
+          path: out/*.apk
 
       - name: Publish release with the APK
         uses: softprops/action-gh-release@v2
         with:
           tag_name: build-${{ github.run_number }}
           name: Pluto Live Cam build ${{ github.run_number }}
-          files: android-native/app/build/outputs/apk/debug/*.apk
+          files: out/*.apk
